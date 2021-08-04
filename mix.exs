@@ -33,8 +33,8 @@ defmodule Scenic.Scrollable.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:scenic, "~> 0.9"},
-      {:scenic_driver_glfw, "~> 0.9"},
+      {:scenic, "~> 0.10"},
+      {:scenic_driver_glfw, "~> 0.10"},
       {:result_ex, "~> 0.1"},
       {:option_ex, "~> 0.2"},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
