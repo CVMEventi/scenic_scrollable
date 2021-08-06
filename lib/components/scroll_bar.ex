@@ -285,6 +285,9 @@ defmodule Scenic.Scrollable.ScrollBar do
       |> init_graph()
 
     {send_event({:scroll_bar_initialized, state.id, state}), state}
+
+    state
+      |> (&{:ok, &1, push: &1.graph}).()
   end
 
   @impl Scenic.Component
@@ -323,8 +326,7 @@ defmodule Scenic.Scrollable.ScrollBar do
       rect(primitive, {4000, 3000}, translate: {-2000, -1500})
     end)
     |> update
-    |> get_and_push_graph
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_pos, position}, %{id: :input_capture}, state) do
@@ -333,7 +335,7 @@ defmodule Scenic.Scrollable.ScrollBar do
       Drag.handle_mouse_move(drag_state, position)
     end)
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_button, {_button, :release, _, _}}, %{id: :scroll_button_1}, state) do
@@ -377,7 +379,7 @@ defmodule Scenic.Scrollable.ScrollBar do
           :ok = send_event({:scroll_bar_scroll_end, state.id, state})
           state
         end).()
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_button, {_button, :press, _, _}}, %{id: :scroll_button_1}, state) do
@@ -389,7 +391,7 @@ defmodule Scenic.Scrollable.ScrollBar do
 
     :ok = send_event({:scroll_bar_button_pressed, state.id, state})
 
-    {:noreply, state}
+    {:noreply, state, push: state.graph}
   end
 
   def handle_input({:cursor_button, {_button, :press, _, _}}, %{id: :scroll_button_2}, state) do
@@ -401,13 +403,13 @@ defmodule Scenic.Scrollable.ScrollBar do
 
     :ok = send_event({:scroll_bar_button_pressed, state.id, state})
 
-    {:noreply, state}
+    {:noreply, state, push: state.graph}
   end
 
   def handle_input({:cursor_button, {_button, :press, _, _position}}, _, state) do
     %{state | scroll_bar_slider_background: :pressed}
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input(
@@ -427,7 +429,7 @@ defmodule Scenic.Scrollable.ScrollBar do
     |> Map.put(:last_scroll_position, state.scroll_position)
     |> Map.put(:scroll_position, scroll_position)
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_exit, _}, _, state) do
@@ -438,7 +440,7 @@ defmodule Scenic.Scrollable.ScrollBar do
       )
     end)
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input(_event, _, state) do
@@ -453,8 +455,7 @@ defmodule Scenic.Scrollable.ScrollBar do
     |> Map.put(:last_scroll_position, state.scroll_position)
     |> Map.put(:scroll_position, Direction.return(position, state.direction))
     |> update_graph_drag_control_position
-    |> get_and_push_graph
-    |> (&{:reply, :ok, &1}).()
+    |> (&{:reply, :ok, &1, push: &1.graph}).()
   end
 
   def handle_call(:direction, _, state) do
@@ -466,7 +467,7 @@ defmodule Scenic.Scrollable.ScrollBar do
   end
 
   @impl Scenic.Scene
-  def filter_event(_, _, state), do: {:stop, state}
+  def filter_event(_, _, state), do: {:halt, state}
 
   # INITIALIZERS
 
@@ -594,7 +595,6 @@ defmodule Scenic.Scrollable.ScrollBar do
       |> rect({0, 0}, id: :input_capture)
     end)
     |> init_scroll_buttons
-    |> get_and_push_graph
   end
 
   # UPDATERS
@@ -606,8 +606,8 @@ defmodule Scenic.Scrollable.ScrollBar do
     |> update_scroll_position
     |> update_graph_drag_control_position
     |> update_control_colors
-    |> get_and_push_graph
     |> send_position_change_event
+
   end
 
   @spec update_scroll_state(t) :: t
@@ -721,12 +721,6 @@ defmodule Scenic.Scrollable.ScrollBar do
       state
     end).()
     |> OptionEx.or_else(state)
-  end
-
-  @spec get_and_push_graph(t) :: t
-  defp get_and_push_graph(%{graph: graph} = state) do
-    push_graph(graph)
-    state
   end
 
   # SIZE CALCULATIONS

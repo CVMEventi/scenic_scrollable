@@ -256,8 +256,6 @@ defmodule Scenic.Scrollable.ScrollBars do
       end)
       |> OptionEx.or_else(graph)
 
-    push_graph(graph)
-
     state = %__MODULE__{
       id: id,
       graph: graph,
@@ -266,6 +264,8 @@ defmodule Scenic.Scrollable.ScrollBars do
     }
 
     {send_event({:scroll_bars_initialized, state.id, state}), state}
+
+    {:ok, state, push: state.graph}
   end
 
   @impl Scenic.Component
@@ -287,7 +287,7 @@ defmodule Scenic.Scrollable.ScrollBars do
         _from,
         state
       ) do
-    {:stop, %{state | horizontal_scroll_bar_pid: OptionEx.return(scroll_bar_state.pid)}}
+    {:halt, %{state | horizontal_scroll_bar_pid: OptionEx.return(scroll_bar_state.pid)}}
   end
 
   def filter_event(
@@ -295,17 +295,17 @@ defmodule Scenic.Scrollable.ScrollBars do
         _from,
         state
       ) do
-    {:stop, %{state | vertical_scroll_bar_pid: OptionEx.return(scroll_bar_state.pid)}}
+    {:halt, %{state | vertical_scroll_bar_pid: OptionEx.return(scroll_bar_state.pid)}}
   end
 
   def filter_event({:scroll_bar_button_pressed, _, scroll_bar_state}, _from, state) do
     state = update_scroll_state(state, scroll_bar_state)
-    {:continue, {:scroll_bars_button_pressed, state.id, state}, state}
+    {:cont, {:scroll_bars_button_pressed, state.id, state}, state}
   end
 
   def filter_event({:scroll_bar_button_released, _, scroll_bar_state}, _from, state) do
     state = update_scroll_state(state, scroll_bar_state)
-    {:continue, {:scroll_bars_button_released, state.id, state}, state}
+    {:cont, {:scroll_bars_button_released, state.id, state}, state}
   end
 
   def filter_event(
@@ -313,7 +313,7 @@ defmodule Scenic.Scrollable.ScrollBars do
         _from,
         %{scroll_state: :scrolling} = state
       ) do
-    {:stop, state}
+    {:halt, state}
   end
 
   def filter_event(
@@ -330,13 +330,13 @@ defmodule Scenic.Scrollable.ScrollBars do
     |> Direction.unwrap()
     |> (&Map.put(state, :scroll_position, &1)).()
     |> update_scroll_state(scroll_bar_state)
-    |> (&{:continue, {:scroll_bars_position_change, &1.id, &1}, &1}).()
+    |> (&{:cont, {:scroll_bars_position_change, &1.id, &1}, &1}).()
   end
 
   def filter_event({:scroll_bar_scroll_end, _id, scroll_bar_state}, _from, state) do
     state = update_scroll_state(state, scroll_bar_state)
 
-    {:continue, {:scroll_bars_scroll_end, state.id, state}, state}
+    {:cont, {:scroll_bars_scroll_end, state.id, state}, state}
   end
 
   def filter_event(_event, _from, state) do

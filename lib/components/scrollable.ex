@@ -345,7 +345,6 @@ defmodule Scenic.Scrollable do
     }
     |> init_position_caps
     |> init_graph(builder, styles)
-    |> ResultEx.return()
   end
 
   @impl Scenic.Scene
@@ -361,7 +360,7 @@ defmodule Scenic.Scrollable do
       &Drag.handle_mouse_click(&1, :left, {x, y}, state.scroll_position)
     )
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_button, {button, :press, _, cursor_pos}}, _, state) do
@@ -371,14 +370,14 @@ defmodule Scenic.Scrollable do
       &Drag.handle_mouse_click(&1, button, cursor_pos, state.scroll_position)
     )
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_pos, cursor_pos}, _, state) do
     state
     |> Map.update!(:drag_state, &Drag.handle_mouse_move(&1, cursor_pos))
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_button, {:left, :release, _, cursor_pos}}, _, state) do
@@ -386,7 +385,7 @@ defmodule Scenic.Scrollable do
     |> start_cooling_down(cursor_pos)
     |> Map.update!(:drag_state, &Drag.handle_mouse_release(&1, :left, cursor_pos))
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:cursor_button, {button, :release, _, cursor_pos}}, _, state) do
@@ -394,7 +393,7 @@ defmodule Scenic.Scrollable do
     |> Map.update!(:drag_state, &Drag.handle_mouse_release(&1, button, cursor_pos))
     |> start_cooling_down(cursor_pos)
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input({:key, {"escape", :release, _}}, context, state) do
@@ -409,7 +408,7 @@ defmodule Scenic.Scrollable do
       ) do
     Map.update!(state, :hotkeys, &Hotkeys.handle_key_press(&1, key))
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input(
@@ -419,7 +418,7 @@ defmodule Scenic.Scrollable do
       ) do
     Map.update!(state, :hotkeys, &Hotkeys.handle_key_release(&1, key))
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   def handle_input(_input, _, state) do
@@ -429,7 +428,7 @@ defmodule Scenic.Scrollable do
   @impl Scenic.Scene
   def filter_event({:scroll_bars_initialized, _id, scroll_bars_state}, _from, state) do
     %{state | scroll_bars: OptionEx.return(scroll_bars_state)}
-    |> (&{:stop, &1}).()
+    |> (&{:halt, &1, push: &1.graph}).()
   end
 
   def filter_event(
@@ -443,35 +442,35 @@ defmodule Scenic.Scrollable do
     |> OptionEx.map(&%{state | scroll_position: &1})
     |> OptionEx.or_else(state)
     |> update
-    |> (&{:stop, &1}).()
+    |> (&{:halt, &1, push: &1.graph}).()
   end
 
   def filter_event({:scroll_bars_position_change, _id, scroll_bars_state}, _from, state) do
     %{state | scroll_bars: OptionEx.return(scroll_bars_state)}
     |> update
-    |> (&{:stop, &1}).()
+    |> (&{:halt, &1, push: &1.graph}).()
   end
 
   def filter_event({:scroll_bars_scroll_end, _id, scroll_bars_state}, _from, state) do
     %{state | scroll_bars: OptionEx.return(scroll_bars_state)}
     |> update
-    |> (&{:stop, &1}).()
+    |> (&{:halt, &1, push: &1.graph}).()
   end
 
   def filter_event({:scroll_bars_button_pressed, _id, scroll_bars_state}, _from, state) do
     %{state | scroll_bars: OptionEx.return(scroll_bars_state)}
     |> update
-    |> (&{:stop, &1}).()
+    |> (&{:halt, &1, push: &1.graph}).()
   end
 
   def filter_event({:scroll_bars_button_released, _id, scroll_bars_state}, _from, state) do
     %{state | scroll_bars: OptionEx.return(scroll_bars_state)}
     |> update
-    |> (&{:stop, &1}).()
+    |> (&{:halt, &1, push: &1.graph}).()
   end
 
   def filter_event(event, _, state) do
-    {:continue, event, state}
+    {:cont, event, state}
   end
 
   # no callback on the `Scenic.Scene` and no GenServer @behaviour, so impl will not work
@@ -479,7 +478,7 @@ defmodule Scenic.Scrollable do
   def handle_info(:tick, state) do
     %{state | animating: false}
     |> update
-    |> (&{:noreply, &1}).()
+    |> (&{:noreply, &1, push: &1.graph}).()
   end
 
   # no callback on the `Scenic.Scene` and no GenServer @behaviour, so impl will not work
@@ -497,7 +496,7 @@ defmodule Scenic.Scrollable do
     |> init_input_capture
     |> init_content(builder, styles)
     |> init_scroll_bars(styles)
-    |> get_and_push_graph
+    |> (&{:ok, &1, push: &1.graph}).()
   end
 
   @spec init_input_capture(t) :: t
@@ -558,7 +557,6 @@ defmodule Scenic.Scrollable do
     |> apply_force
     |> translate
     |> update_scroll_bars
-    |> get_and_push_graph
     |> tick
   end
 
@@ -762,12 +760,6 @@ defmodule Scenic.Scrollable do
   end
 
   # UTILITY
-
-  @spec get_and_push_graph(t) :: t
-  defp get_and_push_graph(%{graph: graph} = state) do
-    push_graph(graph)
-    state
-  end
 
   @spec get_scroll_bars_direction(t) :: v2
   defp get_scroll_bars_direction(%{scroll_bars: :none}), do: {0, 0}

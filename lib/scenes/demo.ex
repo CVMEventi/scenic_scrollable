@@ -13,7 +13,7 @@ defmodule Scenic.Scrollable.Scene.Demo do
 
   @impl Scenic.Scene
   def init(_, _) do
-    Graph.build(font: :roboto, font_size: 24)
+    graph = Graph.build(font: :roboto, font_size: 24)
     |> scrollable(
       %{frame: {500, 500}, content: %{x: 0, y: 15, width: 1200, height: 2200}},
       fn graph ->
@@ -28,7 +28,7 @@ defmodule Scenic.Scrollable.Scene.Demo do
       scroll_drag: %{mouse_buttons: [:left]},
       scroll_bar: [scroll_buttons: true, scroll_bar_theme: Theme.preset(:primary)]
     )
-    |> push_graph()
-    |> ResultEx.return()
+
+    {:ok, graph, push: graph}
   end
 end
