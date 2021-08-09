@@ -34,7 +34,7 @@ defmodule Scenic.Scrollable.MixProject do
   defp deps do
     [
       {:scenic, "~> 0.10"},
-      {:scenic_driver_glfw, "~> 0.10"},
+      {:scenic_driver_glfw, "~> 0.10", targets: :host},
       {:result_ex, "~> 0.1"},
       {:option_ex, "~> 0.2"},
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
